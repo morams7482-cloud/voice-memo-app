@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="음성메모" />
+  <title>음성 메모</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="public/icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #22223b;
+      --accent: #e63946;
+      --accent2: #457b9d;
+      --text: #f1faee;
+      --text-dim: #a8a8b8;
+      --border: #2a2a3e;
+      --success: #2a9d8f;
+      --radius: 16px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    header {
+      padding: 20px 20px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    header .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    header .stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .stat-chip {
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    /* RECORD SECTION */
+    .record-section {
+      padding: 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .text-input-area {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      padding: 14px;
+      resize: none;
+      height: 90px;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .text-input-area:focus {
+      border-color: var(--accent2);
+    }
+
+    .text-input-area::placeholder {
+      color: var(--text-dim);
+    }
+
+    .listening-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .listening-indicator.active {
+      display: flex;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-mic {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-mic.recording {
+      background: #b71c1c;
+      animation: mic-pulse 1.2s infinite;
+    }
+
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(230,57,70,0); }
+    }
+
+    .btn-save {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-clear {
+      background: var(--surface2);
+      color: var(--text-dim);
+      flex: 0 0 auto;
+      padding: 12px 16px;
+    }
+
+    /* MEMO LIST */
+    .memo-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 8px;
+      flex-shrink: 0;
+    }
+
+    .memo-list-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-delete-all {
+      font-size: 12px;
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--accent);
+      border-radius: 20px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    .memo-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px 20px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .memo-list::-webkit-scrollbar { width: 4px; }
+    .memo-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; line-height: 1.6; }
+
+    /* MEMO CARD */
+    .memo-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .memo-card:active { border-color: var(--accent2); }
+
+    .memo-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .memo-date {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .memo-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-icon {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-family: 'Noto Sans KR', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .btn-icon:active { transform: scale(0.94); }
+
+    .btn-icon.edit { color: var(--accent2); border-color: var(--accent2); }
+    .btn-icon.delete { color: var(--accent); border-color: var(--accent); }
+    .btn-icon.save-edit { color: var(--success); border-color: var(--success); }
+
+    .memo-content {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .memo-edit-area {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--accent2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 15px;
+      padding: 10px;
+      resize: none;
+      min-height: 80px;
+      outline: none;
+      line-height: 1.6;
+    }
+
+    .modified-badge {
+      font-size: 10px;
+      color: var(--accent2);
+      margin-top: 6px;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🎙️ 음성 메모</h1>
+    <div class="subtitle">관리사무소 업무 메모</div>
+    <div class="stats">
+      <span class="stat-chip" id="memo-count">메모 0개</span>
+      <span class="stat-chip" id="today-count">오늘 0개</span>
+    </div>
+  </header>
+
+  <div class="record-section">
+    <div class="listening-indicator" id="listening-indicator">
+      <div class="pulse-dot"></div>
+      <span>듣는 중... 말씀하세요</span>
+    </div>
+    <textarea
+      class="text-input-area"
+      id="memo-input"
+      placeholder="음성 버튼을 누르고 말씀하세요&#10;또는 직접 입력하세요"
+    ></textarea>
+    <div class="btn-row">
+      <button class="btn btn-mic" id="btn-mic" onclick="toggleMic()">
+        🎤 <span id="mic-label">음성 입력</span>
+      </button>
+      <button class="btn btn-save" onclick="saveMemo()">
+        💾 저장
+      </button>
+      <button class="btn btn-clear" onclick="clearInput()">✕</button>
+    </div>
+  </div>
+
+  <div class="memo-list-header">
+    <h2>저장된 메모</h2>
+    <button class="btn-delete-all" onclick="deleteAll()">전체 삭제</button>
+  </div>
+
+  <div class="memo-list" id="memo-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let memos = JSON.parse(localStorage.getItem('voiceMemos') || '[]');
+  let recognition = null;
+  let isRecording = false;
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function saveMemos() {
+    localStorage.setItem('voiceMemos', JSON.stringify(memos));
+    updateStats();
+    renderMemos();
+  }
+
+  function updateStats() {
+    const total = memos.length;
+    const today = new Date().toDateString();
+    const todayCount = memos.filter(m => new Date(m.created).toDateString() === today).length;
+    document.getElementById('memo-count').textContent = `메모 ${total}개`;
+    document.getElementById('today-count').textContent = `오늘 ${todayCount}개`;
+  }
+
+  function saveMemo() {
+    const input = document.getElementById('memo-input');
+    const text = input.value.trim();
+    if (!text) { showToast('내용을 입력해주세요'); return; }
+    const memo = { id: Date.now(), text, created: new Date().toISOString(), modified: null };
+    memos.unshift(memo);
+    saveMemos();
+    input.value = '';
+    showToast('✅ 저장되었습니다');
+  }
+
+  function clearInput() {
+    document.getElementById('memo-input').value = '';
+    if (isRecording) stopMic();
+  }
+
+  function deleteMemo(id) {
+    if (!confirm('이 메모를 삭제할까요?')) return;
+    memos = memos.filter(m => m.id !== id);
+    saveMemos();
+    showToast('🗑️ 삭제되었습니다');
+  }
+
+  function deleteAll() {
+    if (!memos.length) { showToast('삭제할 메모가 없습니다'); return; }
+    if (!confirm(`메모 ${memos.length}개를 모두 삭제할까요?`)) return;
+    memos = [];
+    saveMemos();
+    showToast('🗑️ 전체 삭제되었습니다');
+  }
+
+  function startEdit(id) {
+    const card = document.getElementById('card-' + id);
+    const memo = memos.find(m => m.id === id);
+    const contentEl = card.querySelector('.memo-content');
+    const actionsEl = card.querySelector('.memo-actions');
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'memo-edit-area';
+    textarea.value = memo.text;
+    textarea.id = 'edit-' + id;
+    contentEl.replaceWith(textarea);
+
+    actionsEl.innerHTML = `
+      <button class="btn-icon save-edit" onclick="saveEdit(${id})">저장</button>
+      <button class="btn-icon" onclick="cancelEdit(${id})">취소</button>
+    `;
+    textarea.focus();
+    textarea.style.height = textarea.scrollHeight + 'px';
+  }
+
+  function saveEdit(id) {
+    const textarea = document.getElementById('edit-' + id);
+    const text = textarea.value.trim();
+    if (!text) { showToast('내용을 입력해주세요'); return; }
+    const memo = memos.find(m => m.id === id);
+    memo.text = text;
+    memo.modified = new Date().toISOString();
+    saveMemos();
+    showToast('✏️ 수정되었습니다');
+  }
+
+  function cancelEdit(id) {
+    renderMemos();
+  }
+
+  function renderMemos() {
+    const list = document.getElementById('memo-list');
+    if (!memos.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📝</div>
+          <p>저장된 메모가 없습니다<br>음성 또는 텍스트로 메모를 남겨보세요</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = memos.map(m => `
+      <div class="memo-card" id="card-${m.id}">
+        <div class="memo-meta">
+          <span class="memo-date">📅 ${formatDate(m.created)}</span>
+          <div class="memo-actions">
+            <button class="btn-icon edit" onclick="startEdit(${m.id})">수정</button>
+            <button class="btn-icon delete" onclick="deleteMemo(${m.id})">삭제</button>
+          </div>
+        </div>
+        <div class="memo-content">${m.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        ${m.modified ? `<div class="modified-badge">✏️ 수정됨 ${formatDate(m.modified)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // Voice Recognition
+  function initRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+    const r = new SpeechRecognition();
+    r.lang = 'ko-KR';
+    r.continuous = true;
+    r.interimResults = true;
+    let finalText = '';
+
+    r.onstart = () => {
+      isRecording = true;
+      finalText = document.getElementById('memo-input').value;
+      document.getElementById('btn-mic').classList.add('recording');
+      document.getElementById('mic-label').textContent = '녹음 중지';
+      document.getElementById('listening-indicator').classList.add('active');
+    };
+
+    r.onresult = (e) => {
+      let interim = '';
+      let newFinal = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) newFinal += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      finalText += newFinal;
+      document.getElementById('memo-input').value = finalText + (interim ? ' ' + interim : '');
+    };
+
+    r.onerror = (e) => {
+      stopMic();
+      if (e.error === 'not-allowed') showToast('마이크 권한을 허용해주세요');
+      else showToast('음성 인식 오류: ' + e.error);
+    };
+
+    r.onend = () => stopMic();
+    return r;
+  }
+
+  function toggleMic() {
+    if (isRecording) { stopMic(); return; }
+    if (!recognition) recognition = initRecognition();
+    if (!recognition) { showToast('이 브라우저는 음성 인식을 지원하지 않습니다'); return; }
+    try { recognition.start(); }
+    catch(e) { showToast('음성 인식을 시작할 수 없습니다'); }
+  }
+
+  function stopMic() {
+    isRecording = false;
+    if (recognition) { try { recognition.stop(); } catch(e) {} }
+    document.getElementById('btn-mic').classList.remove('recording');
+    document.getElementById('mic-label').textContent = '음성 입력';
+    document.getElementById('listening-indicator').classList.remove('active');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Init
+  renderMemos();
+  updateStats();
+
+  // Enter key saves
+  document.getElementById('memo-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.ctrlKey) saveMemo();
+  });
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+  }
+</script>
+</body>
+</html>
